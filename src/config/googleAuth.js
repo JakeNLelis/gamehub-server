@@ -2,12 +2,44 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User");
 
+// Determine the correct callback URL based on environment
+const getCallbackURL = () => {
+  if (process.env.VERCEL_URL) {
+    // Running on Vercel
+    return `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
+  } else if (process.env.GOOGLE_CALLBACK_URL) {
+    // Use explicit callback URL from environment
+    return process.env.GOOGLE_CALLBACK_URL;
+  } else {
+    // Fallback to localhost for development
+    return "http://localhost:5000/api/auth/google/callback";
+  }
+};
+
+const callbackURL = getCallbackURL();
+
+console.log("🔧 Initializing Google OAuth Strategy");
+console.log(
+  "GOOGLE_CLIENT_ID:",
+  process.env.GOOGLE_CLIENT_ID ? "✅ Set" : "❌ Missing"
+);
+console.log(
+  "GOOGLE_CLIENT_SECRET:",
+  process.env.GOOGLE_CLIENT_SECRET ? "✅ Set" : "❌ Missing"
+);
+console.log(
+  "GOOGLE_CALLBACK_URL:",
+  process.env.GOOGLE_CALLBACK_URL || "❌ Missing/Undefined"
+);
+console.log("VERCEL_URL:", process.env.VERCEL_URL || "❌ Not on Vercel");
+console.log("Computed Callback URL:", callbackURL);
+
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: callbackURL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

@@ -8,9 +8,26 @@ const {
 const User = require("../models/User");
 
 // Google OAuth login
-const googleAuth = passport.authenticate("google", {
-  scope: ["profile", "email"],
-});
+const googleAuth = (req, res, next) => {
+  console.log("🔍 Google OAuth initiated");
+  console.log("Environment variables check:");
+  console.log(
+    "- GOOGLE_CLIENT_ID:",
+    process.env.GOOGLE_CLIENT_ID ? "✅ Set" : "❌ Missing"
+  );
+  console.log(
+    "- GOOGLE_CLIENT_SECRET:",
+    process.env.GOOGLE_CLIENT_SECRET ? "✅ Set" : "❌ Missing"
+  );
+  console.log(
+    "- GOOGLE_CALLBACK_URL:",
+    process.env.GOOGLE_CALLBACK_URL || "❌ Missing"
+  );
+
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })(req, res, next);
+};
 
 // Google OAuth callback
 const googleCallback = async (req, res, next) => {
