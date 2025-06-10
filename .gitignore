@@ -74,9 +74,6 @@ jspm_packages/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
-# Upload directories
-uploads/
-
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -95,3 +92,5 @@ Thumbs.db
 
 # Test files
 test-results/
+
+tests/
