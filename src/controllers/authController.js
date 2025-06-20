@@ -33,11 +33,29 @@ const googleAuth = (req, res, next) => {
 const googleCallback = async (req, res, next) => {
   passport.authenticate("google", { session: false }, async (err, user) => {
     try {
+      // Determine the correct client URL based on environment
+      const getClientURL = () => {
+        if (process.env.CLIENT_URL) {
+          return process.env.CLIENT_URL;
+        } else if (process.env.VERCEL_URL) {
+          // If running on Vercel but CLIENT_URL not set, make an educated guess
+          // This should be configured properly in production
+          return `https://${process.env.VERCEL_URL}`;
+        } else {
+          // Fallback to localhost for development
+          return "http://localhost:3000";
+        }
+      };
+
+      const clientURL = getClientURL();
+      console.log("CLIENT_URL:", process.env.CLIENT_URL || "❌ Missing");
+      console.log("Computed Client URL:", clientURL);
+
       if (err) {
         console.error("Google OAuth error:", err);
         // Redirect to frontend with error
         return res.redirect(
-          `${process.env.CLIENT_URL}/login?error=${encodeURIComponent(
+          `${clientURL}/login?error=${encodeURIComponent(
             "Authentication failed"
           )}`
         );
@@ -46,22 +64,27 @@ const googleCallback = async (req, res, next) => {
       if (!user) {
         // Redirect to frontend with error
         return res.redirect(
-          `${process.env.CLIENT_URL}/login?error=${encodeURIComponent(
+          `${clientURL}/login?error=${encodeURIComponent(
             "Authentication failed"
           )}`
         );
-      } // Generate JWT tokens
+      }
+
+      // Generate JWT tokens
       const accessToken = generateToken({ userId: user._id });
       const refreshToken = generateRefreshToken({ userId: user._id });
 
       // Redirect to frontend with tokens as URL parameters
-      const redirectUrl = `${process.env.CLIENT_URL}/auth/callback?token=${accessToken}&refreshToken=${refreshToken}`;
+      const redirectUrl = `${clientURL}/auth/callback?token=${accessToken}&refreshToken=${refreshToken}`;
+      console.log("Redirecting to:", redirectUrl);
       return res.redirect(redirectUrl);
     } catch (error) {
       console.error("Token generation error:", error);
+      // Determine client URL for error redirect
+      const clientURL = process.env.CLIENT_URL || "http://localhost:3000";
       // Redirect to frontend with error
       return res.redirect(
-        `${process.env.CLIENT_URL}/login?error=${encodeURIComponent(
+        `${clientURL}/login?error=${encodeURIComponent(
           "Token generation failed"
         )}`
       );
