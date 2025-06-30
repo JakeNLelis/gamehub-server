@@ -26,7 +26,7 @@ router.put("/profile", authenticateToken, updateProfile);
 router.post(
   "/avatar",
   authenticateToken,
-  avatarUpload.single("avatar"),
+  avatarUpload,
   handleMulterError,
   uploadAvatar
 );

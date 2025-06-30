@@ -19,7 +19,11 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: null, // Local file path to uploaded avatar image
+      default: null, // Cloudinary URL or Google profile photo URL
+    },
+    avatarPublicId: {
+      type: String,
+      default: null, // Cloudinary public_id for deletion (only for uploaded avatars)
     },
   },
   {
@@ -27,23 +31,13 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Virtual for avatar URL
+// Virtual field for backward compatibility
 userSchema.virtual("avatarUrl").get(function () {
-  if (this.avatar) {
-    const baseUrl = process.env.SERVER_BASE_URL || "http://localhost:5000";
-    return `${baseUrl}/uploads/avatars/${this.avatar}`;
-  }
-  return null;
+  return this.avatar;
 });
 
-// Include virtuals when converting to JSON
+// Ensure virtual fields are included in JSON output
 userSchema.set("toJSON", { virtuals: true });
-
-// Remove sensitive fields when converting to JSON
-userSchema.methods.toJSON = function () {
-  const user = this.toObject();
-  delete user.__v;
-  return user;
-};
+userSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("User", userSchema);

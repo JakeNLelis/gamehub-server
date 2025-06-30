@@ -174,7 +174,7 @@ const getCurrentUser = async (req, res) => {
         name: req.user.name,
         email: req.user.email,
         avatar: req.user.avatar,
-        avatarUrl: req.user.avatarUrl,
+        avatarUrl: req.user.avatar, // Use avatar field for Cloudinary URL
         createdAt: req.user.createdAt,
         updatedAt: req.user.updatedAt,
       },

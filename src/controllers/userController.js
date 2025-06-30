@@ -1,16 +1,11 @@
 const User = require("../models/User");
-const path = require("path");
-const fs = require("fs").promises;
+const { cloudinary } = require("../config/cloudinary");
 const {
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
   VALIDATION_LIMITS,
-  FILE_UPLOAD,
 } = require("../utils/constants");
-const {
-  validateRequired,
-  generateUniqueFilename,
-} = require("../utils/helpers");
+const { validateRequired } = require("../utils/helpers");
 
 /**
  * Get user profile
@@ -24,7 +19,7 @@ const getProfile = async (req, res) => {
         name: req.user.name,
         email: req.user.email,
         avatar: req.user.avatar,
-        avatarUrl: req.user.avatarUrl,
+        avatarUrl: req.user.avatar, // Use avatar field for Cloudinary URL
         createdAt: req.user.createdAt,
         updatedAt: req.user.updatedAt,
       },
@@ -84,7 +79,7 @@ const updateProfile = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
-        avatarUrl: updatedUser.avatarUrl,
+        avatarUrl: updatedUser.avatar, // Use avatar field for Cloudinary URL
         createdAt: updatedUser.createdAt,
         updatedAt: updatedUser.updatedAt,
       },
@@ -119,43 +114,38 @@ const uploadAvatar = async (req, res) => {
     }
 
     const userId = req.user._id;
-    const oldAvatar = req.user.avatar;
+    const oldAvatarPublicId = req.user.avatarPublicId; // Store Cloudinary public_id
 
-    // Generate unique filename
-    const fileExtension = path.extname(req.file.originalname);
-    const filename = generateUniqueFilename("avatar", userId, fileExtension);
-
-    // Define paths
-    const uploadsDir = path.join(__dirname, "../../uploads/avatars");
-    const filePath = path.join(uploadsDir, filename);
-
-    // Ensure uploads directory exists
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    // Move file from temp location to final location
-    await fs.rename(req.file.path, filePath);
+    // File is already uploaded to Cloudinary via multer-storage-cloudinary
+    const avatarUrl = req.file.path; // Cloudinary URL
+    const publicId = req.file.filename; // Cloudinary public_id
 
     // Update user in database
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { avatar: filename },
+      {
+        avatar: avatarUrl,
+        avatarPublicId: publicId,
+      },
       { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
       // Clean up uploaded file if user update fails
-      await fs.unlink(filePath).catch(console.error);
+      await cloudinary.uploader.destroy(publicId).catch(console.error);
       return res.status(404).json({
         error: ERROR_MESSAGES.USER_NOT_FOUND,
         message: "User not found",
       });
     }
 
-    // Remove old avatar file if it exists
-    if (oldAvatar) {
-      const oldFilePath = path.join(uploadsDir, oldAvatar);
-      await fs.unlink(oldFilePath).catch((err) => {
-        console.warn("Failed to delete old avatar:", err.message);
+    // Remove old avatar from Cloudinary if it exists
+    if (oldAvatarPublicId) {
+      await cloudinary.uploader.destroy(oldAvatarPublicId).catch((err) => {
+        console.warn(
+          "Failed to delete old avatar from Cloudinary:",
+          err.message
+        );
       });
     }
 
@@ -167,7 +157,7 @@ const uploadAvatar = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
-        avatarUrl: updatedUser.avatarUrl,
+        avatarUrl: updatedUser.avatar, // Same as avatar for Cloudinary
         createdAt: updatedUser.createdAt,
         updatedAt: updatedUser.updatedAt,
       },
@@ -176,8 +166,8 @@ const uploadAvatar = async (req, res) => {
     console.error("Upload avatar error:", error);
 
     // Clean up uploaded file on error
-    if (req.file && req.file.path) {
-      await fs.unlink(req.file.path).catch(console.error);
+    if (req.file && req.file.filename) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(console.error);
     }
 
     res.status(500).json({
@@ -193,9 +183,9 @@ const uploadAvatar = async (req, res) => {
 const deleteAvatar = async (req, res) => {
   try {
     const userId = req.user._id;
-    const currentAvatar = req.user.avatar;
+    const currentAvatarPublicId = req.user.avatarPublicId;
 
-    if (!currentAvatar) {
+    if (!currentAvatarPublicId) {
       return res.status(400).json({
         error: ERROR_MESSAGES.VALIDATION_ERROR,
         message: "No avatar to delete",
@@ -205,7 +195,10 @@ const deleteAvatar = async (req, res) => {
     // Update user in database
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { avatar: null },
+      {
+        avatar: null,
+        avatarPublicId: null,
+      },
       { new: true, runValidators: true }
     );
 
@@ -216,14 +209,9 @@ const deleteAvatar = async (req, res) => {
       });
     }
 
-    // Delete avatar file
-    const filePath = path.join(
-      __dirname,
-      "../../uploads/avatars",
-      currentAvatar
-    );
-    await fs.unlink(filePath).catch((err) => {
-      console.warn("Failed to delete avatar file:", err.message);
+    // Delete avatar from Cloudinary
+    await cloudinary.uploader.destroy(currentAvatarPublicId).catch((err) => {
+      console.warn("Failed to delete avatar from Cloudinary:", err.message);
     });
 
     res.json({
@@ -234,7 +222,7 @@ const deleteAvatar = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
-        avatarUrl: updatedUser.avatarUrl,
+        avatarUrl: updatedUser.avatar,
         createdAt: updatedUser.createdAt,
         updatedAt: updatedUser.updatedAt,
       },

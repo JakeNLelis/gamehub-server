@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const path = require("path");
 const passport = require("./config/googleAuth");
 
 const app = express();
@@ -65,23 +64,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Initialize Passport
 app.use(passport.initialize());
 
-// Static file serving for uploaded images with CORS headers
-app.use(
-  "/uploads",
-  (req, res, next) => {
-    // Add CORS headers for static files
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-    res.header("Cross-Origin-Resource-Policy", "cross-origin");
-    next();
-  },
-  express.static(path.join(__dirname, "../uploads"))
-);
-
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -97,7 +79,7 @@ app.get("/api", (req, res) => {
   res.json({
     message: "Welcome to GameHub API",
     version: "1.0.0",
-    status: "Phase 4: Reviews & Favorites Complete",
+    status: "Phase 5: Deployment & Testing + Cloudinary Integration",
     endpoints: {
       health: "/health",
       auth: {
@@ -134,8 +116,15 @@ app.get("/api", (req, res) => {
         endpoints: [
           "GET /api/users/profile - Get user profile (Protected)",
           "PUT /api/users/profile - Update user profile (Protected)",
-          "POST /api/users/avatar - Upload user avatar (Protected)",
-          "DELETE /api/users/avatar - Delete user avatar (Protected)",
+          "POST /api/users/avatar - Upload user avatar to Cloudinary (Protected)",
+          "DELETE /api/users/avatar - Delete user avatar from Cloudinary (Protected)",
+        ],
+        notes: [
+          "Avatar uploads are processed via Cloudinary CDN",
+          "Automatic image optimization and transformation applied",
+          "Supports: JPG, JPEG, PNG, GIF, WEBP formats",
+          "Maximum file size: 5MB per upload",
+          "Images are automatically resized to 400x400px",
         ],
       },
       reviews: {
@@ -161,17 +150,19 @@ app.get("/api", (req, res) => {
     features: {
       completed: [
         "✅ Authentication System (Google OAuth + JWT)",
-        "✅ User Management",
+        "✅ User Management with Cloudinary Avatar Storage",
         "✅ Game System (External API Integration)",
         "✅ Game Search & Filtering",
         "✅ Automated Game Synchronization",
         "✅ Reviews System (Create, Read, Update, Delete)",
         "✅ Favorites System (Add, Remove, List)",
+        "✅ Cloud-based Image Storage & Optimization",
       ],
       next: [
         "Unit & Integration Tests",
-        "Error Handling",
+        "Error Handling Enhancement",
         "Performance Optimization",
+        "Avatar Upload Frontend Testing",
       ],
     },
   });

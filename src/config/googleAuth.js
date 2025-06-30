@@ -3,36 +3,9 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User");
 
 // Determine the correct callback URL based on environment
-const getCallbackURL = () => {
-  if (process.env.VERCEL_URL) {
-    // Running on Vercel
-    return `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
-  } else if (process.env.GOOGLE_CALLBACK_URL) {
-    // Use explicit callback URL from environment
-    return process.env.GOOGLE_CALLBACK_URL;
-  } else {
-    // Fallback to localhost for development
-    return "http://localhost:5000/api/auth/google/callback";
-  }
-};
-
-const callbackURL = getCallbackURL();
-
-console.log("🔧 Initializing Google OAuth Strategy");
-console.log(
-  "GOOGLE_CLIENT_ID:",
-  process.env.GOOGLE_CLIENT_ID ? "✅ Set" : "❌ Missing"
-);
-console.log(
-  "GOOGLE_CLIENT_SECRET:",
-  process.env.GOOGLE_CLIENT_SECRET ? "✅ Set" : "❌ Missing"
-);
-console.log(
-  "GOOGLE_CALLBACK_URL:",
-  process.env.GOOGLE_CALLBACK_URL || "❌ Missing/Undefined"
-);
-console.log("VERCEL_URL:", process.env.VERCEL_URL || "❌ Not on Vercel");
-console.log("Computed Callback URL:", callbackURL);
+const callbackURL =
+  process.env.GOOGLE_CALLBACK_URL ||
+  "http://localhost:5000/api/auth/google/callback";
 
 passport.use(
   new GoogleStrategy(
@@ -50,16 +23,35 @@ passport.use(
           // User exists, update their information
           user.name = profile.displayName;
           user.email = profile.emails[0].value;
+
+          if (profile.photos && profile.photos.length > 0) {
+            user.avatar = profile.photos[0].value;
+          } else {
+            user.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              user.name
+            )}&background=random`;
+          }
+
           await user.save();
           return done(null, user);
         }
 
         // User doesn't exist, create new user
-        user = await User.create({
+        const userData = {
           googleId: profile.id,
           name: profile.displayName,
           email: profile.emails[0].value,
-        });
+        };
+
+        if (profile.photos && profile.photos.length > 0) {
+          userData.avatar = profile.photos[0].value;
+        } else {
+          userData.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            userData.name
+          )}&background=random`;
+        }
+
+        user = await User.create(userData);
 
         return done(null, user);
       } catch (error) {
