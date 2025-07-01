@@ -343,12 +343,12 @@ router.get("/reviews", auth, requireAdmin, async (req, res) => {
     const gameId = req.query.gameId;
 
     // Build filter
-    const filter = gameId ? { game: gameId } : {};
+    const filter = gameId ? { gameId: gameId } : {};
 
     const [reviews, totalReviews] = await Promise.all([
       Review.find(filter)
-        .populate("user", "name email username")
-        .populate("game", "title")
+        .populate("userId", "name email username")
+        .populate("gameId", "title")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -399,14 +399,14 @@ router.delete("/reviews/:id", auth, requireAdmin, async (req, res) => {
     await Review.findByIdAndDelete(reviewId);
 
     // Update game's rating and review count
-    const reviews = await Review.find({ game: review.game });
+    const reviews = await Review.find({ gameId: review.gameId });
     const totalReviews = reviews.length;
     const averageRating =
       totalReviews > 0
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
         : 0;
 
-    await Game.findByIdAndUpdate(review.game, {
+    await Game.findByIdAndUpdate(review.gameId, {
       averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
       totalReviews,
     });
