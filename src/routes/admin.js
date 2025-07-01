@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { auth, requireRole } = require("../middleware/auth");
+const { thumbnailUpload } = require("../config/cloudinary");
 const Game = require("../models/Game");
 const Review = require("../models/Review");
 const User = require("../models/User");
@@ -9,6 +10,84 @@ const { body, validationResult } = require("express-validator");
 // Middleware to check for admin or superadmin role
 const requireAdmin = requireRole(["admin", "superadmin"]);
 const requireSuperAdmin = requireRole(["superadmin"]);
+
+// =============================================================================
+// IMAGE UPLOAD ROUTES (Admin & SuperAdmin)
+// =============================================================================
+
+// @route   POST /api/admin/upload/thumbnail
+// @desc    Upload game thumbnail image to Cloudinary
+// @access  Admin/SuperAdmin
+router.post(
+  "/upload/thumbnail",
+  auth,
+  requireAdmin,
+  thumbnailUpload.single("thumbnail"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image file provided",
+        });
+      }
+
+      // Return the Cloudinary URL
+      res.json({
+        success: true,
+        data: {
+          url: req.file.path,
+          public_id: req.file.filename,
+        },
+        message: "Thumbnail uploaded successfully",
+      });
+    } catch (error) {
+      console.error("Thumbnail upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload thumbnail",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// @route   POST /api/admin/upload/background
+// @desc    Upload game background image to Cloudinary
+// @access  Admin/SuperAdmin
+router.post(
+  "/upload/background",
+  auth,
+  requireAdmin,
+  thumbnailUpload.single("background"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image file provided",
+        });
+      }
+
+      // Return the Cloudinary URL
+      res.json({
+        success: true,
+        data: {
+          url: req.file.path,
+          public_id: req.file.filename,
+        },
+        message: "Background image uploaded successfully",
+      });
+    } catch (error) {
+      console.error("Background image upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload background image",
+        error: error.message,
+      });
+    }
+  }
+);
 
 // =============================================================================
 // GAME MANAGEMENT ROUTES (Admin & SuperAdmin)
