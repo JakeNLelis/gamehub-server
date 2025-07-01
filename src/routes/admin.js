@@ -578,8 +578,8 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
       User.countDocuments({ role: { $in: ["admin", "superadmin"] } }),
       Game.find().sort({ createdAt: -1 }).limit(5).lean(),
       Review.find()
-        .populate("user", "name")
-        .populate("game", "title")
+        .populate("userId", "name")
+        .populate("gameId", "title")
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),
