@@ -17,6 +17,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    username: {
+      type: String,
+      default: null, // Optional username for user
+      unique: true, // Ensure usernames are unique if provided
+      sparse: true, // Allows null values to coexist with unique usernames
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin", "superadmin"], // Define roles
+      default: "user", // Default role is user
+    },
     avatar: {
       type: String,
       default: null, // Cloudinary URL or Google profile photo URL

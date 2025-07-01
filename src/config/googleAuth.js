@@ -20,19 +20,6 @@ passport.use(
         let user = await User.findOne({ googleId: profile.id });
 
         if (user) {
-          // User exists, update their information
-          user.name = profile.displayName;
-          user.email = profile.emails[0].value;
-
-          if (profile.photos && profile.photos.length > 0) {
-            user.avatar = profile.photos[0].value;
-          } else {
-            user.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              user.name
-            )}&background=random`;
-          }
-
-          await user.save();
           return done(null, user);
         }
 
@@ -41,6 +28,9 @@ passport.use(
           googleId: profile.id,
           name: profile.displayName,
           email: profile.emails[0].value,
+          // generate a unique username
+          username:
+            profile.displayName.toLowerCase().replace(/ /g, ".") + Date.now(),
         };
 
         if (profile.photos && profile.photos.length > 0) {

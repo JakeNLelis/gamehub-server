@@ -20,6 +20,7 @@ const getProfile = async (req, res) => {
         email: req.user.email,
         avatar: req.user.avatar,
         avatarUrl: req.user.avatar, // Use avatar field for Cloudinary URL
+        role: req.user.role || "user", // Include user role
         createdAt: req.user.createdAt,
         updatedAt: req.user.updatedAt,
       },

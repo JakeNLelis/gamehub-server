@@ -73,8 +73,6 @@ const JWT = {
 
 // Game System Constants
 const GAMES = {
-  SYNC_SCHEDULE: "0 0 3 * * 0", // Every Sunday at 3:00 AM UTC
-  API_URL: "https://www.freetogame.com/api/games",
   CACHE_DURATION: 60 * 60 * 1000, // 1 hour
   MAX_GAMES_PER_PAGE: 100,
   POPULAR_TAGS_LIMIT: 20,
