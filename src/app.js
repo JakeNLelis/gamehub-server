@@ -100,7 +100,6 @@ app.get("/api", (req, res) => {
           "GET /api/games/filters/metadata - Get filter options",
           "GET /api/games/stats - Get game statistics",
           "GET /api/games/search/advanced - Advanced search",
-          "POST /api/games/sync - Manual game synchronization",
         ],
         filters: [
           "?category={genre} - Filter by game genre",
@@ -177,10 +176,6 @@ const favoriteRoutes = require("./routes/favorites");
 
 // Import error handling middleware
 const { errorHandler, notFound } = require("./middleware/errorHandler");
-
-// Initialize cron service for scheduled tasks
-const cronService = require("./services/cronService");
-cronService.init();
 
 // Use routes
 app.use("/api/auth", authRoutes);

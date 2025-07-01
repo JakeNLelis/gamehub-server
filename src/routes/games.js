@@ -5,7 +5,6 @@ const {
   getGameById,
   getFilterMetadata,
   getGameStats,
-  syncGames,
   advancedSearch,
 } = require("../controllers/gameController");
 const { optionalAuth } = require("../middleware/auth");
@@ -46,11 +45,6 @@ router.get("/stats", getGameStats);
 //   - page: Pagination page number
 //   - limit: Number of items per page
 router.get("/search/advanced", optionalAuth, advancedSearch);
-
-// @route   POST /api/games/sync
-// @desc    Manually trigger game synchronization
-// @access  Public (should be protected in production)
-router.post("/sync", syncGames);
 
 // @route   GET /api/games/:id
 // @desc    Get single game details

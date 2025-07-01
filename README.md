@@ -61,7 +61,6 @@ A comprehensive Node.js backend API for the GameHub free-to-play game discovery 
 - **File Uploads**: Multer for avatar management
 - **Security**: Helmet, CORS, Rate Limiting
 - **Testing**: Jest with comprehensive test coverage
-- **Task Scheduling**: Node-Cron for automated game syncing
 - **External APIs**: FreeToGame API integration
 - **Validation**: Express-validator for input sanitization
 
@@ -224,8 +223,7 @@ server/
 │   ├── services/
 │   │   ├── gameService.js       # External API integration logic
 │   │   ├── favoriteService.js   # Favorites business logic
-│   │   ├── reviewService.js     # Reviews business logic
-│   │   └── cronService.js       # Scheduled task management
+│   │   └── reviewService.js     # Reviews business logic
 │   ├── utils/
 │   │   ├── constants.js         # Application constants
 │   │   ├── helpers.js           # Utility helper functions
