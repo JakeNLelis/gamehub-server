@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const gameSchema = new mongoose.Schema(
   {
-    externalId: {
-      type: Number,
-      required: true,
-      unique: true, // Unique external ID from FreeToGame API
-    },
     title: {
       type: String,
       required: true,
@@ -16,22 +11,26 @@ const gameSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    backgroundImage: {
+      type: String,
+      default: null, // Optional background image
+    },
     shortDescription: {
       type: String,
       required: true,
-      index: "text", // Text index for search
+      index: "search", // Text index for search
     },
     gameUrl: {
       type: String,
       required: true,
     },
     genre: {
-      type: String,
+      type: [String],
       required: true,
       index: true, // Index for filtering
     },
     platform: {
-      type: String,
+      type: [String],
       required: true,
       index: true, // Index for filtering
     },
@@ -47,13 +46,29 @@ const gameSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    freetogameProfileUrl: {
-      type: String,
-      required: true,
+    inPlayersFavorites: {
+      type: Number,
+      default: 0,
     },
-    lastUpdated: {
-      type: Date,
-      default: Date.now,
+    minOS: {
+      type: String,
+      default: null, // Optional minimum OS requirement
+    },
+    minMemory: {
+      type: String,
+      default: null, // Optional minimum memory requirement
+    },
+    minStorage: {
+      type: String,
+      default: null, // Optional minimum storage requirement
+    },
+    minProcessor: {
+      type: String,
+      default: null, // Optional minimum processor requirement
+    },
+    minGraphics: {
+      type: String,
+      default: null, // Optional minimum graphics requirement
     },
     averageRating: {
       type: Number,
@@ -73,7 +88,7 @@ const gameSchema = new mongoose.Schema(
 );
 
 // Compound indexes for better query performance
-gameSchema.index({ genre: 1, platform: 1 });
+// Note: Cannot index parallel arrays (genre and platform are both arrays)
 gameSchema.index({ averageRating: -1, totalReviews: -1 });
 gameSchema.index({ releaseDate: -1 });
 gameSchema.index({ title: "text", shortDescription: "text" });
@@ -116,11 +131,6 @@ gameSchema.statics.updateRating = async function (
     },
     { new: true }
   );
-};
-
-// Static method to find games by external IDs
-gameSchema.statics.findByExternalIds = function (externalIds) {
-  return this.find({ externalId: { $in: externalIds } });
 };
 
 module.exports = mongoose.model("Game", gameSchema);

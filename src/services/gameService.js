@@ -1,61 +1,8 @@
-const axios = require("axios");
 const Game = require("../models/Game");
 
 class GameService {
   constructor() {
-    this.apiUrl = process.env.FREETOGAME_API_URL;
-  }
-
-  // Fetch all games from FreeToGame API
-  async fetchGamesFromAPI() {
-    try {
-      console.log("🎮 Fetching games from FreeToGame API...");
-      const response = await axios.get(this.apiUrl, {
-        timeout: 30000, // 30 second timeout
-        headers: {
-          "User-Agent": "GameHub-API/1.0.0",
-        },
-      });
-
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error("Invalid response format from FreeToGame API");
-      }
-
-      console.log(`📥 Fetched ${response.data.length} games from API`);
-      return response.data;
-    } catch (error) {
-      console.error("❌ Error fetching games from API:", error.message);
-      throw new Error(`Failed to fetch games: ${error.message}`);
-    }
-  }
-  // Transform API data to our database format
-  transformGameData(apiGame) {
-    // Handle potentially invalid release dates
-    let releaseDate = new Date(apiGame.release_date);
-    if (isNaN(releaseDate.getTime())) {
-      // If invalid date, use a default date or try to parse it differently
-      releaseDate = new Date("2000-01-01"); // Default fallback date
-      console.warn(
-        `⚠️  Invalid release date for ${apiGame.title}: ${apiGame.release_date}, using fallback`
-      );
-    }
-
-    return {
-      externalId: apiGame.id,
-      title: apiGame.title,
-      thumbnail: apiGame.thumbnail,
-      shortDescription: apiGame.short_description,
-      gameUrl: apiGame.game_url,
-      genre: apiGame.genre,
-      platform: apiGame.platform,
-      publisher: apiGame.publisher,
-      developer: apiGame.developer,
-      releaseDate: releaseDate,
-      freetogameProfileUrl: apiGame.freetogame_profile_url,
-      lastUpdated: new Date(),
-      averageRating: 0,
-      totalReviews: 0,
-    };
+    // Standalone game API service
   }
 
   // Get available categories/genres
@@ -71,8 +18,15 @@ class GameService {
   // Get available platforms
   async getAvailablePlatforms() {
     try {
-      const platforms = await Game.distinct("platform");
+      // For array-type platform field, we need to use aggregation to flatten arrays
+      const platforms = await Game.aggregate([
+        { $unwind: "$platform" },
+        { $group: { _id: "$platform" } },
+        { $sort: { _id: 1 } },
+      ]);
+
       return platforms
+        .map((p) => p._id)
         .filter((platform) => platform && platform.trim() !== "")
         .sort();
     } catch (error) {
@@ -190,9 +144,9 @@ class GameService {
         filter.genre = new RegExp(category, "i"); // Case-insensitive
       }
 
-      // Platform filter
+      // Platform filter - updated for array-type platform field
       if (platform) {
-        filter.platform = new RegExp(platform, "i"); // Case-insensitive
+        filter.platform = { $in: [new RegExp(platform, "i")] };
       }
 
       // Search filter (title and description)

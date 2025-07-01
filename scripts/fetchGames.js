@@ -3,15 +3,12 @@
 /**
  * Game Data Synchronization Script
  *
- * This script fetches game data from the FreeToGame API and synchronizes
- * it with our MongoDB database. It can be run manually or scheduled as a cron job.
- *
  * Usage:
  *   node scripts/fetchGames.js
  *   npm run sync-games
  *
  * Features:
- * - Fetches all games from FreeToGame API
+ * - Fetches all games from API
  * - Updates existing games or creates new ones
  * - Preserves user ratings and reviews
  * - Provides detailed logging and error reporting
@@ -20,8 +17,6 @@
 
 require("dotenv").config();
 const mongoose = require("mongoose");
-const gameService = require("../src/services/gameService");
-
 // Connect to database
 const connectDB = async () => {
   try {

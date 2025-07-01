@@ -107,38 +107,6 @@ const getGameStats = async (req, res) => {
   }
 };
 
-// @route   POST /api/games/sync
-// @desc    Manually trigger game synchronization (admin endpoint)
-// @access  Public (should be protected in production)
-const syncGames = async (req, res) => {
-  try {
-    console.log("🔄 Manual game sync triggered");
-    const result = await gameService.syncGames();
-
-    if (result.success) {
-      res.json({
-        success: true,
-        message: "Game synchronization completed successfully",
-        data: result.stats,
-        errors: result.errors,
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: "Game synchronization failed",
-        message: result.message,
-      });
-    }
-  } catch (error) {
-    console.error("Sync games error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to synchronize games",
-      message: error.message,
-    });
-  }
-};
-
 // @route   GET /api/games/search/advanced
 // @desc    Advanced search with multiple filters (alternative endpoint)
 // @access  Public
@@ -260,6 +228,5 @@ module.exports = {
   getGameById,
   getFilterMetadata,
   getGameStats,
-  syncGames,
   advancedSearch,
 };
