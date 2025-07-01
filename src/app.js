@@ -173,6 +173,7 @@ const userRoutes = require("./routes/users");
 const gameRoutes = require("./routes/games");
 const reviewRoutes = require("./routes/reviews");
 const favoriteRoutes = require("./routes/favorites");
+const adminRoutes = require("./routes/admin");
 
 // Import error handling middleware
 const { errorHandler, notFound } = require("./middleware/errorHandler");
@@ -183,6 +184,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/favorites", favoriteRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Error handling middleware (must be after routes)
 app.use(notFound);
