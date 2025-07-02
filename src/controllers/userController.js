@@ -40,7 +40,7 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, username } = req.body;
 
     // Validate input
     const validation = validateRequired({ name });
@@ -59,12 +59,54 @@ const updateProfile = async (req, res) => {
       });
     }
 
+    const updateData = { name: name.trim() };
+
+    // Handle username update if provided
+    if (username !== undefined) {
+      if (!username.trim()) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message: "Username is required",
+        });
+      }
+
+      if (username.trim().length < 3) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message: "Username must be at least 3 characters long",
+        });
+      }
+
+      if (!/^[a-zA-Z0-9._]+$/.test(username.trim())) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message:
+            "Username can only contain letters, numbers, dots, and underscores",
+        });
+      }
+
+      // Check if username is already taken by another user
+      const existingUser = await User.findOne({
+        username: username.trim(),
+        _id: { $ne: req.user._id }, // Exclude current user
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message:
+            "This username is already taken. Please choose a different one.",
+        });
+      }
+
+      updateData.username = username.trim();
+    }
+
     // Update user
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { name: name.trim() },
-      { new: true, runValidators: true }
-    );
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updatedUser) {
       return res.status(404).json({
