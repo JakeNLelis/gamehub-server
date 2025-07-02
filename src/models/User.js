@@ -19,9 +19,8 @@ const userSchema = new mongoose.Schema(
     },
     username: {
       type: String,
-      default: null, // Optional username for user
       unique: true, // Ensure usernames are unique if provided
-      sparse: true, // Allows null values to coexist with unique usernames
+      required: true,
     },
     role: {
       type: String,

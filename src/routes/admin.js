@@ -348,7 +348,6 @@ router.get("/reviews", auth, requireAdmin, async (req, res) => {
 
     const [reviews, totalReviews] = await Promise.all([
       Review.find(filter)
-        .populate("userId", "name email username")
         .populate("gameId", "title")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -357,11 +356,28 @@ router.get("/reviews", auth, requireAdmin, async (req, res) => {
       Review.countDocuments(filter),
     ]);
 
+    // Manually populate user data for each review
+    const populatedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        const user = await User.findById(review.userId).lean();
+        return {
+          ...review,
+          userId: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatar: user.avatar,
+            avatarUrl: user.avatar,
+          },
+        };
+      })
+    );
+
     const totalPages = Math.ceil(totalReviews / limit);
 
     res.json({
       success: true,
-      data: reviews,
+      data: populatedReviews,
       pagination: {
         currentPage: page,
         totalPages,
@@ -587,7 +603,6 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
         .select("title thumbnail createdAt developer")
         .lean(),
       Review.find()
-        .populate("userId", "name email")
         .populate("gameId", "title")
         .sort({ createdAt: -1 })
         .limit(5)
@@ -641,6 +656,23 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
       ]),
     ]);
 
+    // Manually populate user data for recent reviews
+    const populatedRecentReviews = await Promise.all(
+      recentReviews.map(async (review) => {
+        const user = await User.findById(review.userId).lean();
+        return {
+          ...review,
+          userId: {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            avatar: user.avatar,
+            avatarUrl: user.avatar,
+          },
+        };
+      })
+    );
+
     // Calculate growth percentages (you can enhance this with actual historical data)
     const growthStats = {
       games: Math.floor(Math.random() * 20) + 5, // Placeholder - implement actual growth calculation
@@ -661,7 +693,7 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
         },
         recentActivity: {
           recentGames,
-          recentReviews,
+          recentReviews: populatedRecentReviews,
         },
         insights: {
           topRatedGames,

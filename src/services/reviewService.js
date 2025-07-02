@@ -2,39 +2,28 @@ const Review = require("../models/Review");
 const Game = require("../models/Game");
 
 class ReviewService {
-  /**
-   * Get reviews for a game with user's review first
-   * @param {string} gameId - Game ID
-   * @param {string} userId - User ID (optional)
-   * @returns {Object} Reviews data
-   */
   static async getGameReviews(gameId, userId = null) {
     try {
-      let userReview = null;
-      let otherReviews = [];
+      // Get all reviews for the game
+      const allReviews = await Review.find({ gameId })
+        .populate("userId", "name username email avatar")
+        .sort({ createdAt: -1 });
 
-      if (userId) {
-        // Get user's review first if authenticated
-        userReview = await Review.findOne({ gameId, userId });
+      // If user is authenticated, prioritize their review
+      if (userId && allReviews.length > 0) {
+        const userReviewIndex = allReviews.findIndex(
+          (review) => review.userId._id.toString() === userId
+        );
 
-        // Get other reviews (excluding user's review)
-        otherReviews = await Review.find({
-          gameId,
-          userId: { $ne: userId },
-        }).sort({ createdAt: -1 });
-      } else {
-        // If not authenticated, just get all reviews
-        otherReviews = await Review.find({ gameId }).sort({ createdAt: -1 });
+        if (userReviewIndex > 0) {
+          // Move user's review to the front
+          const userReview = allReviews.splice(userReviewIndex, 1)[0];
+          allReviews.unshift(userReview);
+        }
       }
-
-      // Combine with user's review first
-      const allReviews = userReview
-        ? [userReview, ...otherReviews]
-        : otherReviews;
 
       return {
         reviews: allReviews,
-        userReview: userReview,
         totalReviews: allReviews.length,
       };
     } catch (error) {
@@ -182,6 +171,7 @@ class ReviewService {
       const skip = (page - 1) * limit;
 
       const reviews = await Review.find({ userId })
+        .populate("userId", "name username email avatar")
         .populate("gameId", "title thumbnail genre platform")
         .sort({ createdAt: -1 })
         .skip(skip)
