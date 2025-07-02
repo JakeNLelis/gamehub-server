@@ -222,7 +222,7 @@ const GAME_GENRES = [
 
 // Game Platforms
 const GAME_PLATFORMS = [
-  "PC (Windows)",
+  "Windows",
   "Web Browser",
   "Android",
   "iOS",
