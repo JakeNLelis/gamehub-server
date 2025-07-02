@@ -5,6 +5,7 @@ const { thumbnailUpload } = require("../config/cloudinary");
 const Game = require("../models/Game");
 const Review = require("../models/Review");
 const User = require("../models/User");
+const Favorite = require("../models/Favorite");
 const { body, validationResult } = require("express-validator");
 
 // Middleware to check for admin or superadmin role
@@ -567,6 +568,7 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
       totalGames,
       totalUsers,
       totalReviews,
+      totalFavorites,
       totalAdmins,
       recentGames,
       recentReviews,
@@ -577,6 +579,7 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
       Game.countDocuments(),
       User.countDocuments(),
       Review.countDocuments(),
+      Favorite.countDocuments(),
       User.countDocuments({ role: { $in: ["admin", "superadmin"] } }),
       Game.find()
         .sort({ createdAt: -1 })
@@ -652,6 +655,7 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
           totalGames,
           totalUsers,
           totalReviews,
+          totalFavorites,
           totalAdmins,
           growthStats,
         },
