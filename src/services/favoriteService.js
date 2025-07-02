@@ -70,6 +70,13 @@ class FavoriteService {
 
       await favorite.save();
 
+      // Increment the inPlayersFavorites count for the game
+      await Game.findByIdAndUpdate(
+        gameId,
+        { $inc: { inPlayersFavorites: 1 } },
+        { new: true }
+      );
+
       // Populate the game data for the response
       await favorite.populate("gameId");
 
@@ -99,6 +106,19 @@ class FavoriteService {
       if (!favorite) {
         throw new Error("Game not found in favorites");
       }
+
+      // Decrement the inPlayersFavorites count for the game
+      await Game.findByIdAndUpdate(
+        gameId,
+        { $inc: { inPlayersFavorites: -1 } },
+        { new: true }
+      );
+
+      // Ensure the count doesn't go below 0 (additional safety check)
+      await Game.updateOne(
+        { _id: gameId, inPlayersFavorites: { $lt: 0 } },
+        { $set: { inPlayersFavorites: 0 } }
+      );
 
       return {
         message: "Game removed from favorites successfully",

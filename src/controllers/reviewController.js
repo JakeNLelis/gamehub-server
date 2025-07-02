@@ -1,6 +1,6 @@
 const Review = require("../models/Review");
 const Game = require("../models/Game");
-const ReviewService = require("../services/reviewService");
+const User = require("../models/User");
 const { validationResult } = require("express-validator");
 
 // Get reviews for a specific game (user's review first)
@@ -18,12 +18,44 @@ const getGameReviews = async (req, res) => {
       });
     }
 
-    // Use service to get reviews
-    const reviewData = await ReviewService.getGameReviews(gameId, userId);
+    // Get all reviews for the game
+    const allReviews = await Review.find({ gameId }).sort({ createdAt: -1 });
+
+    // Manually populate user data to ensure all fields are included
+    const populatedReviews = await Promise.all(
+      allReviews.map(async (review) => {
+        const user = await User.findById(review.userId).lean();
+        const reviewObj = review.toObject();
+        reviewObj.userId = {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          avatar: user.avatar,
+          avatarUrl: user.avatar,
+        };
+        return reviewObj;
+      })
+    );
+
+    // If user is authenticated, prioritize their review
+    if (userId && populatedReviews.length > 0) {
+      const userReviewIndex = populatedReviews.findIndex(
+        (review) => review.userId._id.toString() === userId
+      );
+
+      if (userReviewIndex > 0) {
+        // Move user's review to the front
+        const userReview = populatedReviews.splice(userReviewIndex, 1)[0];
+        populatedReviews.unshift(userReview);
+      }
+    }
 
     res.json({
       success: true,
-      data: reviewData,
+      data: {
+        reviews: populatedReviews,
+        totalReviews: populatedReviews.length,
+      },
     });
   } catch (error) {
     console.error("Error fetching game reviews:", error);
@@ -169,18 +201,45 @@ const getUserReviews = async (req, res) => {
   try {
     const userId = req.user.id;
     const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Use service to get user reviews
-    const result = await ReviewService.getUserReviews(
-      userId,
-      parseInt(page),
-      parseInt(limit)
+    // Get user reviews without populate
+    const reviews = await Review.find({ userId })
+      .populate("gameId", "title thumbnail genre platform")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Manually populate user data
+    const populatedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        const user = await User.findById(review.userId).lean();
+        const reviewObj = review.toObject();
+        reviewObj.userId = {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          avatar: user.avatar,
+          avatarUrl: user.avatar,
+        };
+        return reviewObj;
+      })
     );
+
+    const totalReviews = await Review.countDocuments({ userId });
+    const totalPages = Math.ceil(totalReviews / parseInt(limit));
 
     res.json({
       success: true,
-      data: result.reviews,
-      pagination: result.pagination,
+      data: populatedReviews,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalReviews,
+        reviewsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPreviousPage: parseInt(page) > 1,
+      },
     });
   } catch (error) {
     console.error("Error fetching user reviews:", error);

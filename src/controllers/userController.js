@@ -17,6 +17,7 @@ const getProfile = async (req, res) => {
       user: {
         id: req.user._id,
         name: req.user.name,
+        username: req.user.username,
         email: req.user.email,
         avatar: req.user.avatar,
         avatarUrl: req.user.avatar, // Use avatar field for Cloudinary URL
@@ -39,7 +40,7 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, username } = req.body;
 
     // Validate input
     const validation = validateRequired({ name });
@@ -58,12 +59,54 @@ const updateProfile = async (req, res) => {
       });
     }
 
+    const updateData = { name: name.trim() };
+
+    // Handle username update if provided
+    if (username !== undefined) {
+      if (!username.trim()) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message: "Username is required",
+        });
+      }
+
+      if (username.trim().length < 3) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message: "Username must be at least 3 characters long",
+        });
+      }
+
+      if (!/^[a-zA-Z0-9._]+$/.test(username.trim())) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message:
+            "Username can only contain letters, numbers, dots, and underscores",
+        });
+      }
+
+      // Check if username is already taken by another user
+      const existingUser = await User.findOne({
+        username: username.trim(),
+        _id: { $ne: req.user._id }, // Exclude current user
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          error: ERROR_MESSAGES.VALIDATION_ERROR,
+          message:
+            "This username is already taken. Please choose a different one.",
+        });
+      }
+
+      updateData.username = username.trim();
+    }
+
     // Update user
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { name: name.trim() },
-      { new: true, runValidators: true }
-    );
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -78,6 +121,7 @@ const updateProfile = async (req, res) => {
       user: {
         id: updatedUser._id,
         name: updatedUser.name,
+        username: updatedUser.username,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
         avatarUrl: updatedUser.avatar, // Use avatar field for Cloudinary URL
@@ -156,6 +200,7 @@ const uploadAvatar = async (req, res) => {
       user: {
         id: updatedUser._id,
         name: updatedUser.name,
+        username: updatedUser.username,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
         avatarUrl: updatedUser.avatar, // Same as avatar for Cloudinary
@@ -221,6 +266,7 @@ const deleteAvatar = async (req, res) => {
       user: {
         id: updatedUser._id,
         name: updatedUser.name,
+        username: updatedUser.username,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
         avatarUrl: updatedUser.avatar,
@@ -315,9 +361,147 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+/**
+ * Check username availability
+ */
+const checkUsernameAvailability = async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Validate username format
+    if (!username || username.length < 3 || username.length > 20) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message: "Username must be between 3 and 20 characters",
+      });
+    }
+
+    // Check if username contains only allowed characters (alphanumeric, underscore, hyphen)
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message:
+          "Username can only contain letters, numbers, underscores, and hyphens",
+      });
+    }
+
+    // Check if username is already taken
+    const existingUser = await User.findOne({
+      username: { $regex: new RegExp(`^${username}$`, "i") }, // Case-insensitive check
+    });
+
+    res.json({
+      success: true,
+      available: !existingUser,
+      message: existingUser
+        ? "Username is already taken"
+        : "Username is available",
+    });
+  } catch (error) {
+    console.error("Check username availability error:", error);
+    res.status(500).json({
+      error: ERROR_MESSAGES.VALIDATION_ERROR,
+      message: "An error occurred while checking username availability",
+    });
+  }
+};
+
+/**
+ * Update username
+ */
+const updateUsername = async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    // Validate username format
+    if (!username || username.length < 3 || username.length > 20) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message: "Username must be between 3 and 20 characters",
+      });
+    }
+
+    // Check if username contains only allowed characters
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message:
+          "Username can only contain letters, numbers, underscores, and hyphens",
+      });
+    }
+
+    // Check if username is already taken by another user
+    const existingUser = await User.findOne({
+      username: { $regex: new RegExp(`^${username}$`, "i") },
+      _id: { $ne: req.user._id }, // Exclude current user
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message: "Username is already taken",
+      });
+    }
+
+    // Update user username
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { username: username.toLowerCase() }, // Store username in lowercase
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        error: ERROR_MESSAGES.USER_NOT_FOUND,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Username updated successfully",
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        avatar: updatedUser.avatar,
+        avatarUrl: updatedUser.avatar,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Update username error:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message: error.message,
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: ERROR_MESSAGES.VALIDATION_ERROR,
+        message: "Username is already taken",
+      });
+    }
+
+    res.status(500).json({
+      error: ERROR_MESSAGES.PROFILE_UPDATE_FAILED,
+      message: "An error occurred while updating username",
+    });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
+  checkUsernameAvailability,
+  updateUsername,
   uploadAvatar,
   deleteAvatar,
   deleteAccount,
