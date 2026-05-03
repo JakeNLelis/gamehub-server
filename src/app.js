@@ -2,9 +2,17 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const mongoose = require("mongoose");
 const passport = require("./config/googleAuth");
 
 const app = express();
+
+const isProduction = process.env.NODE_ENV === "production";
+const clientUrl = process.env.CLIENT_URL;
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+const cloudinaryBaseUrl = cloudinaryCloudName
+  ? `https://res.cloudinary.com/${cloudinaryCloudName}`
+  : "https://res.cloudinary.com";
 
 // Security middleware
 app.use(
@@ -17,14 +25,17 @@ app.use(
         imgSrc: [
           "'self'",
           "data:",
-          "http://localhost:3000",
-          "http://localhost:5000",
-          "*", // Allow images from any origin for development
+          cloudinaryBaseUrl,
+          ...(isProduction
+            ? []
+            : ["http://localhost:3000", "http://localhost:5000"]),
         ],
         connectSrc: [
           "'self'",
-          "http://localhost:3000",
-          "http://localhost:5000",
+          ...(clientUrl ? [clientUrl] : []),
+          ...(isProduction
+            ? []
+            : ["http://localhost:3000", "http://localhost:5000"]),
         ],
         fontSrc: ["'self'", "https:", "data:"],
         objectSrc: ["'none'"],
@@ -34,7 +45,7 @@ app.use(
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // CORS configuration for mobile apps
@@ -43,15 +54,20 @@ const corsOptions = {
     // Allow mobile apps (which don't send origin header)
     if (!origin) return callback(null, true);
 
-    // Allow localhost for development
-    if (origin.startsWith("http://localhost")) return callback(null, true);
+    const allowedOrigins = [clientUrl].filter(Boolean);
+
+    if (!isProduction) {
+      allowedOrigins.push("http://localhost:3000", "http://localhost:5000");
+    }
+
+    if (allowedOrigins.includes(origin)) return callback(null, true);
 
     // Add your production domain here when needed
     // if (origin === 'https://yourdomain.com') return callback(null, true);
 
-    callback(null, true); // For development, allow all origins
+    callback(new Error("Not allowed by CORS"));
   },
-  credentials: true,
+  credentials: process.env.CORS_ALLOW_CREDENTIALS === "true",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -64,14 +80,51 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Initialize Passport
 app.use(passport.initialize());
 
+const pingMongo = async () => {
+  if (!mongoose.connection?.db) {
+    throw new Error("MongoDB not connected");
+  }
+
+  await mongoose.connection.db.command({ ping: 1 });
+};
+
 // Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    message: "GameHub API is running",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-  });
+app.get("/health", async (req, res) => {
+  try {
+    await pingMongo();
+
+    res.status(200).json({
+      status: "OK",
+      message: "GameHub API and MongoDB are running",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "ERROR",
+      message: "MongoDB ping failed",
+      error: err.message,
+    });
+  }
+});
+
+// Keepalive endpoint for uptime monitoring
+app.get("/api/ping", async (req, res) => {
+  try {
+    await pingMongo();
+
+    res.status(200).json({
+      status: "OK",
+      message: "pong",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "ERROR",
+      message: "MongoDB ping failed",
+      error: err.message,
+    });
+  }
 });
 
 // API routes will be added here
